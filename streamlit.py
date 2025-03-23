@@ -1,5 +1,4 @@
 import streamlit as st
-import chromadb
 from sentence_transformers import SentenceTransformer
 import boto3
 chromadb.api.client.SharedSystemClient.clear_system_cache()
