@@ -1,5 +1,5 @@
 pysqlite3-binary
-chromadb
+chromadb ==0.6.3
 streamlit
 sentence_transformers
 torch
