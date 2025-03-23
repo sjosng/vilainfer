@@ -2,7 +2,7 @@ import streamlit as st
 import chromadb
 from sentence_transformers import SentenceTransformer
 import boto3
-
+chromadb.api.client.SharedSystemClient.clear_system_cache()
 # 모델 로드
 @st.cache_resource
 def load_model():
