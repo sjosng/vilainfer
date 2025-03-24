@@ -6,7 +6,7 @@ import streamlit as st
 import chromadb
 from sentence_transformers import SentenceTransformer
 import boto3
-chromadb.api.client.SharedSystemClient.clear_system_cache()
+
 # 모델 로드
 @st.cache_resource
 def load_model():
@@ -32,7 +32,6 @@ def find_videos(query, date=None, top_k=5):
     results = collection.query(
         query_embeddings=[query_vector],
         n_results=top_k,
-        where=where_filter,
         include=["documents", "metadatas", "distances"]
     )
 
@@ -42,12 +41,11 @@ def find_videos(query, date=None, top_k=5):
             "video_id": meta["video_id"],
             "distance": dist,
             "description": doc,
-            "date": meta["date"]
         })
     return videos
 
 # Cloudflare R2 Pre-signed URL 생성 함수
-def generate_presigned_url(video_id, date_folder):
+def generate_presigned_url(video_id):
     import boto3
 
     r2_client = boto3.client(
@@ -60,7 +58,7 @@ def generate_presigned_url(video_id, date_folder):
     url = r2_client.generate_presigned_url(
         'get_object',
         Params={
-            'Bucket': st.secrets["R2_BUCKET_NAME"],
+            'Bucket': st.secrets["description"],
             'Key': f"{video_id}.mp4"
         },
         ExpiresIn=600
@@ -71,16 +69,14 @@ def generate_presigned_url(video_id, date_folder):
 st.title("영상 검색 프로토타입 🔍")
 
 query = st.text_input("검색할 영상 내용을 입력하세요.", "신호등과 교차로가 있는 영상")
-date = st.text_input("검색 날짜 (옵션, YYYY-MM-DD)", "")
 
 if st.button("영상 찾기"):
     with st.spinner('검색 중입니다...'):
-        results = find_videos(query, date=date if date else None)
+        results = find_videos(query)
 
     st.subheader("🔍 가장 유사한 영상 결과")
     for video in results:
-        video_date = date if date else video['video_id'].split("_")[1:4]  # 날짜가 없으면 ID에서 자동 추출 추천
-        video_url = generate_presigned_url(f"{video['video_id']}", date=video.get("date", date))
+        video_url = generate_presigned_url(f"{video['video_id']}")
 
         st.video(video_url)
         st.markdown(f"**영상 ID:** `{video['video_id']}`\n"
