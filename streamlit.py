@@ -58,7 +58,7 @@ def generate_presigned_url(video_id):
     url = r2_client.generate_presigned_url(
         'get_object',
         Params={
-            'Bucket': st.secrets["description"],
+            'Bucket': st.secrets["R2_BUCKET_NAME"],
             'Key': f"{video_id}.mp4"
         },
         ExpiresIn=600
