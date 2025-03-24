@@ -1,5 +1,5 @@
-chroma-hnswlib==0.7.3
-chromadb==0.5.3
+chroma-hnswlib
+chromadb
 streamlit
 sentence_transformers
 torch
