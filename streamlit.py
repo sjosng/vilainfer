@@ -1,12 +1,11 @@
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-import pysqlite3 as sqlite3
 import streamlit as st
 import chromadb
 from sentence_transformers import SentenceTransformer
 import boto3
-
+from botocore.client import Config
 # 모델 로드
 @st.cache_resource
 def load_model():
@@ -44,26 +43,32 @@ def find_videos(query, date=None, top_k=5):
         })
     return videos
 
-# Cloudflare R2 Pre-signed URL 생성 함수
 def generate_presigned_url(video_id):
     import boto3
+    import logging
 
-    r2_client = boto3.client(
-        's3',
-        endpoint_url=f'https://c5b8240dc0c186f421abddb091e2b049.r2.cloudflarestorage.com',
-        aws_access_key_id=st.secrets["R2_ACCESS_KEY"],
-        aws_secret_access_key=st.secrets["R2_SECRET_KEY"]
-    )
+    try:
+        r2_client = boto3.client(
+            's3',
+            endpoint_url=f'https://c5b8240dc0c186f421abddb091e2b049.r2.cloudflarestorage.com',
+            aws_access_key_id=st.secrets["R2_ACCESS_KEY"],
+            aws_secret_access_key=st.secrets["R2_SECRET_KEY"],
+            config=Config(signature_version='s3v4')
+        )
 
-    url = r2_client.generate_presigned_url(
-        'get_object',
-        Params={
-            'Bucket': st.secrets["R2_BUCKET_NAME"],
-            'Key': f"{video_id}.mp4"
-        },
-        ExpiresIn=600
-    )
-    return url
+        url = r2_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': st.secrets["R2_BUCKET_NAME"],
+                'Key': f"{video_id}.mp4"
+            },
+            ExpiresIn=600
+        )
+        logging.info(f"Generated presigned URL for {video_id}: {url}")
+        return url
+    except Exception as e:
+        logging.error(f"Error generating presigned URL for {video_id}: {str(e)}")
+        raise e
 
 # Streamlit UI 구성
 st.title("영상 검색 프로토타입 🔍")
@@ -78,7 +83,11 @@ if st.button("영상 찾기"):
     for video in results:
         video_url = generate_presigned_url(f"{video['video_id']}")
 
-        st.video(video_url)
+        # 비디오 URL을 하이퍼링크로 표시
         st.markdown(f"**영상 ID:** `{video['video_id']}`\n"
                     f"**유사도 점수:** `{video['distance']:.4f}`\n"
-                    f"**설명:** {video['description']}\n---")
+                    f"**설명:** {video['description']}\n"
+                    f"**URL:** [Watch Video]({video_url})\n---")
+
+        # Streamlit의 video 컴포넌트를 사용하여 동영상 재생
+        st.video(video_url)
