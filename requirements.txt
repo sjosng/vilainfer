@@ -1,6 +1,4 @@
-chroma-hnswlib
 chromadb
 streamlit
 sentence_transformers
-torch
 boto3
